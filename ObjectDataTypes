@@ -1,0 +1,47 @@
+using UnityEngine;
+
+[System.Serializable]
+public abstract class ObjectGarage
+{
+    public string Name;
+
+    public int Price;
+
+    public bool Locked;
+    public bool Bought;
+    public bool Equipped;
+
+    public bool selected;
+}
+
+[System.Serializable]
+public class AmbulanceObject : ObjectGarage
+{
+    public GameObject AmbulanceModel;
+}
+
+[System.Serializable]
+public class AccessoryObject : ObjectGarage
+{
+    public GameObject AccessoryModel;
+}
+
+[System.Serializable]
+public class MedicalObject : ObjectGarage
+{
+    public float MoltiplicatorTimer;
+}
+
+[System.Serializable]
+public class EngineObject : ObjectGarage
+{
+    public float EngineSpeed;
+    public float MaxSpeed;
+    public float BrakeForce;
+    public float AccelerationSpeed;
+}
+
+public class PurchaseType
+{
+    public bool Purchased;
+}
