@@ -1,0 +1,209 @@
+using Nova;
+using System;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class ObjectsMenu : MonoBehaviour
+{
+    public UIBlock Root = null;
+
+    public List<SettingsCollection> SettingsCollections = null;
+    public ListView TabBar = null;
+    public ListView SettingsList = null;
+
+    private int selectedIndex = -1;
+    public UIBlock DismissArea;
+    public UIBlock PurchaseButton; // da assegnare nell'Inspector
+    public ItemView PurchaseItemView;
+    private PurchaseButtonVisuals purchaseButtonVisuals;
+
+    private List<ObjectGarage> CurrentSetting => SettingsCollections[selectedIndex].Objects;
+
+    private void Start()
+    {
+        PurchaseButton.gameObject.SetActive(false);
+
+        //Visual only
+        Root.AddGestureHandler<Gesture.OnHover, ObjectsButtonVisuals>((evt, target) => target.HandleHover(evt));
+        Root.AddGestureHandler<Gesture.OnUnhover, ObjectsButtonVisuals>((evt, target) => target.HandleUnhover(evt));
+        Root.AddGestureHandler<Gesture.OnPress, ObjectsButtonVisuals>((evt, target) => target.HandlePress(evt));
+        Root.AddGestureHandler<Gesture.OnRelease, ObjectsButtonVisuals>((evt, target) => target.HandleRelease(evt));
+
+        DismissArea.AddGestureHandler<Gesture.OnClick>((evt) =>
+        {
+            PurchaseButton.gameObject.SetActive(false);
+
+            // Deseleziona tutti i pulsanti e aggiorna gli indicatori
+            for (int i = 0; i < CurrentSetting.Count; i++)
+            {
+                if (SettingsList.TryGetItemView(i, out var view) && view.Visuals is ObjectsButtonVisuals visuals)
+                {
+                    visuals.IsSelected = false;
+                }
+            }
+        });
+
+        Root.AddGestureHandler<Gesture.OnHover, PurchaseButtonVisuals>(PurchaseButtonVisuals.HandleHover);
+        Root.AddGestureHandler<Gesture.OnUnhover, PurchaseButtonVisuals>(PurchaseButtonVisuals.HandleUnhover);
+        Root.AddGestureHandler<Gesture.OnPress, PurchaseButtonVisuals>(PurchaseButtonVisuals.HandlePress);
+        Root.AddGestureHandler<Gesture.OnRelease, PurchaseButtonVisuals>(PurchaseButtonVisuals.HandleRelease);
+
+        //State changing
+        SettingsList.AddGestureHandler<Gesture.OnClick, ObjectMedicalButtonVisuals>(HandleObjectButtonClicked);
+        SettingsList.AddGestureHandler<Gesture.OnClick, ObjectEngineButtonVisuals>(HandleObjectButtonClicked);
+        SettingsList.AddGestureHandler<Gesture.OnClick, ObjectAmbulanceButtonVisuals>(HandleObjectButtonClicked);
+        SettingsList.AddGestureHandler<Gesture.OnClick, ObjectAccessoryButtonVisuals>(HandleObjectButtonClicked);
+
+        PurchaseButton.AddGestureHandler<Gesture.OnClick, PurchaseButtonVisuals>(HandlePurchaseButtonClicked);
+
+        SettingsList.AddDataBinder<MedicalObject, ObjectMedicalButtonVisuals>(BindObjectButton);
+        SettingsList.AddDataBinder<EngineObject, ObjectEngineButtonVisuals>(BindObjectButton);
+        SettingsList.AddDataBinder<AmbulanceObject, ObjectAmbulanceButtonVisuals>(BindObjectButton);
+        SettingsList.AddDataBinder<AccessoryObject, ObjectAccessoryButtonVisuals>(BindObjectButton);
+
+        //Tabs
+        TabBar.AddDataBinder<SettingsCollection, ObjectsTabButtonVisuals>(BindTab);
+        TabBar.AddGestureHandler<Gesture.OnHover, ObjectsTabButtonVisuals>(ObjectsTabButtonVisuals.HandleHover);
+        TabBar.AddGestureHandler<Gesture.OnUnhover, ObjectsTabButtonVisuals>(ObjectsTabButtonVisuals.HandleUnhover);
+        TabBar.AddGestureHandler<Gesture.OnPress, ObjectsTabButtonVisuals>(ObjectsTabButtonVisuals.HandlePress);
+        TabBar.AddGestureHandler<Gesture.OnRelease, ObjectsTabButtonVisuals>(ObjectsTabButtonVisuals.HandleRelease);
+        TabBar.AddGestureHandler<Gesture.OnClick, ObjectsTabButtonVisuals>(HandleTabClicked);
+
+        TabBar.SetDataSource(SettingsCollections);
+
+        if (TabBar.TryGetItemView(0, out ItemView firstTab))
+        {
+            SelectTab(firstTab.Visuals as ObjectsTabButtonVisuals, 0);
+        }
+    }
+
+    private void HandleTabClicked(Gesture.OnClick evt, ObjectsTabButtonVisuals target, int index)
+    {
+        SelectTab(target, index);
+    }
+
+    private void SelectTab(ObjectsTabButtonVisuals visuals, int index)
+    {
+        if (index == selectedIndex)
+        {
+            return;
+        }
+
+        if (selectedIndex >= 0 && TabBar.TryGetItemView(selectedIndex, out ItemView currentItemView))
+        {
+            (currentItemView.Visuals as ObjectsTabButtonVisuals).IsSelected = false;
+        }
+
+        selectedIndex = index;
+        visuals.IsSelected = true;
+        SettingsList.SetDataSource(CurrentSetting);
+    }
+
+    private void BindTab(Data.OnBind<SettingsCollection> evt, ObjectsTabButtonVisuals target, int index)
+    {
+        target.Background.SetImage(evt.UserData.ImageTexture);
+        target.IsSelected = false;
+    }
+
+    private void HandleObjectButtonClicked<TVisual>(Gesture.OnClick evt, TVisual target, int index)
+    where TVisual : ObjectsButtonVisuals
+    {
+        PurchaseButton.gameObject.SetActive(false);
+
+        var selected = CurrentSetting[index];
+
+        if (selected.Locked)
+        {
+            target.IsLocked = true;
+            target.IsEquippedOrIsOwner = false;
+            return;
+        }
+
+        if (!selected.Bought || selected.Equipped)
+            return;
+
+        for (int i = 0; i < CurrentSetting.Count; i++)
+        {
+            var obj = CurrentSetting[i];
+            obj.Equipped = (i == index);
+
+            if (SettingsList.TryGetItemView(i, out var view) && view.Visuals is ObjectsButtonVisuals visuals)
+            {
+                visuals.IsEquippedOrIsOwner = obj.Bought;
+                visuals.StateLabel.Text = obj.Bought ? (obj.Equipped ? "equipped" : "owner") : "";
+                visuals.IsSelected = (i == index); // <- Solo il selezionato
+            }
+        }
+
+        target.AssignObject();
+        target.AssignValue();
+
+        PurchaseButton.gameObject.SetActive(true);
+        if (PurchaseItemView != null)
+        {
+            purchaseButtonVisuals = PurchaseItemView.Visuals as PurchaseButtonVisuals;
+        }
+
+        if (purchaseButtonVisuals != null)
+        {
+            purchaseButtonVisuals.PriceText.Text = $"{target.price}";
+        }
+    }
+
+    private void HandlePurchaseButtonClicked(Gesture.OnClick evt, PurchaseButtonVisuals target)
+    {
+        Debug.Log("PurchaseEffectuated"); //Successivamente aggiungere PurchaseFunction
+    }
+
+    private void BindObjectButton<TObject, TVisual>(Data.OnBind<TObject> evt, TVisual visuals, int index)
+    where TObject : ObjectGarage
+    where TVisual : ObjectsButtonVisuals
+    {
+        
+        if (Type.GetTypeHandle(evt) == typeof(ObjectAmbulanceButtonVisuals))
+        {
+            var settingAmbulance = evt.UserData as AmbulanceObject;
+            var visualAmbulance = visuals as ObjectAmbulanceButtonVisuals;
+
+            visualAmbulance.Model = settingAmbulance.AmbulanceModel;
+        }
+        else if (Type.GetTypeHandle(evt) == typeof(ObjectAccessoryButtonVisuals))
+        {
+            var settingAccessory = evt.UserData as AccessoryObject;
+            var visualAccessory = visuals as ObjectAccessoryButtonVisuals;
+
+            visualAccessory.Model = settingAccessory.AccessoryModel;
+        }
+        else if (Type.GetTypeHandle(evt) == typeof(ObjectMedicalButtonVisuals))
+        {
+            var settingMedical = evt.UserData as MedicalObject;
+            var visualMedical = visuals as ObjectMedicalButtonVisuals;
+
+            visualMedical.Value = settingMedical.MoltiplicatorTimer;
+        }
+        else if (Type.GetTypeHandle(evt) == typeof(ObjectEngineButtonVisuals))
+        {
+            var settingEngine = evt.UserData as EngineObject;
+            var visualEngine = visuals as ObjectEngineButtonVisuals;
+
+            visualEngine.EngineSpeed = settingEngine.EngineSpeed;
+            visualEngine.MaxSpeed = settingEngine.MaxSpeed;
+            visualEngine.BrakeForce = settingEngine.BrakeForce;
+            visualEngine.AccelerationSpeed = settingEngine.AccelerationSpeed;
+        }
+
+        var setting = evt.UserData;
+
+        visuals.ObjectLabel.Text = setting.Name;
+        visuals.IsLocked = setting.Locked;
+        visuals.IsEquippedOrIsOwner = !setting.Locked;
+        visuals.StateLabel.Text = setting.Bought && setting.Equipped ? "equipped" : "owner";
+        if (setting.Equipped && !setting.Bought)
+        {
+            visuals.IsEquippedOrIsOwner = false;
+            setting.Equipped = false;
+        }
+        visuals.IsSelected = false;
+        visuals.price = setting.Price;
+    }
+}
