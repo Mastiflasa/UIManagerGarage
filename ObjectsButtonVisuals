@@ -1,0 +1,181 @@
+using Nova;
+using NUnit.Framework;
+using NUnit.Framework.Constraints;
+using Unity.VisualScripting;
+using UnityEngine;
+using System.Collections.Generic;
+
+public class ObjectsButtonVisuals : ItemVisuals
+{
+    public UIBlock2D Background = null;
+    public TextBlock ObjectLabel = null;
+    public TextBlock StateLabel = null;
+    public UIBlock2D LockedIndicator = null;
+    public UIBlock2D SelectedIndicator = null;
+
+    [HideInInspector] public int price;
+
+    public Color SelectedColor;
+    public Color LockedColor;
+    public Color DefaultColor;
+    public Color HoveredColor;
+    public Color PressedColor;
+
+    public bool IsLocked
+    {
+        get => LockedIndicator.gameObject.activeSelf;
+        set
+        {
+            LockedIndicator.gameObject.SetActive(value);
+            Background.Color = value ? LockedColor : DefaultColor;
+        }
+    }
+
+    public bool IsSelected
+    {
+        get => SelectedIndicator.gameObject.activeSelf;
+        set
+        {
+            SelectedIndicator.gameObject.SetActive(value);
+            Background.Color = value ? SelectedColor : DefaultColor;
+            ObjectLabel.Color = value ? Color.black : Color.white;
+            StateLabel.Color = value ? Color.black : Color.white;
+        }
+    }
+
+    public bool IsEquippedOrIsOwner
+    {
+        get => StateLabel.gameObject.activeSelf;
+        set => StateLabel.gameObject.SetActive(value);
+    }
+
+    internal virtual void HandleHover(Gesture.OnHover evt)
+    {
+        if (!IsLocked && !IsSelected) Background.Color = HoveredColor;
+    }
+
+    internal virtual void HandlePress(Gesture.OnPress evt)
+    {
+        Background.Color = PressedColor;
+    }
+
+    internal virtual void HandleRelease(Gesture.OnRelease evt)
+    {
+        if (!IsLocked && !IsSelected) Background.Color = HoveredColor;
+    }
+
+    internal virtual void HandleUnhover(Gesture.OnUnhover evt)
+    {
+        if (!IsLocked && !IsSelected) Background.Color = DefaultColor;
+    }
+    
+    public virtual void AssignObject() { }
+
+    public virtual void AssignValue() { }
+}
+
+public class ObjectMedicalButtonVisuals : ObjectsButtonVisuals
+{
+    public float Value { get; set; }
+
+    public override void AssignValue()
+    {
+        List<float> Values = new()
+        {
+            Value
+        };
+
+        foreach (float value in Values)
+        {
+            Debug.Log(value);
+        }
+
+        ManagerUI.Instance.EquippObjectOrSetValue(null, null, Values, true);
+        Debug.Log("Richiamato assignObject: medicalValue");
+    }
+}
+
+public class ObjectEngineButtonVisuals : ObjectsButtonVisuals
+{
+    public float EngineSpeed { get; set; }
+    public float MaxSpeed { get; set; }
+    public float BrakeForce { get; set; }
+    public float AccelerationSpeed { get; set; }
+
+    public override void AssignValue()
+    {
+        List<float> Values = new()
+        {
+            EngineSpeed,
+            MaxSpeed,
+            BrakeForce,
+            AccelerationSpeed
+        };
+
+        foreach(float value in Values)
+        {
+            Debug.Log(value);
+        }
+
+        ManagerUI.Instance.EquippObjectOrSetValue(null, null, Values, false);
+        Debug.Log("Richiamato assignObject: engineValue");
+    }
+}
+
+public class ObjectAmbulanceButtonVisuals : ObjectsButtonVisuals
+{
+    public GameObject Model { get; set; }
+
+
+    public override void AssignObject()
+    {
+        Debug.Log(Model);
+
+        ManagerUI.Instance.EquippObjectOrSetValue(Model, true, null, null);
+        Debug.Log("Richiamato assignObject: ambulanceObject");
+    }
+}
+
+public class ObjectAccessoryButtonVisuals : ObjectsButtonVisuals
+{
+    public GameObject Model { get; set; }
+
+    public override void AssignObject()
+    {
+        Debug.Log(Model);
+
+        ManagerUI.Instance.EquippObjectOrSetValue(Model, false, null, null);
+        Debug.Log("Richiamato assignObject: accessoryObject");
+    }
+}
+
+public class PurchaseButtonVisuals : ItemVisuals
+{
+    public UIBlock2D Background = null;
+    public TextBlock PriceText = null;
+
+    public Color LockedColor;
+    public Color DefaultColor;
+    public Color HoveredColor;
+    public Color PressedColor;
+
+    internal static void HandleHover(Gesture.OnHover evt, PurchaseButtonVisuals target)
+    {
+        target.Background.Color = target.HoveredColor;
+    }
+
+    internal static void HandlePress(Gesture.OnPress evt, PurchaseButtonVisuals target)
+    {
+        target.Background.Color = target.PressedColor;
+    }
+
+    internal static void HandleRelease(Gesture.OnRelease evt, PurchaseButtonVisuals target)
+    {
+        target.Background.Color = target.HoveredColor;
+    }
+
+    internal static void HandleUnhover(Gesture.OnUnhover evt, PurchaseButtonVisuals target)
+    {
+        target.Background.Color = target.DefaultColor;
+    }
+}
