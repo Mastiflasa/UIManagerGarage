@@ -1,0 +1,88 @@
+using UnityEngine;
+using System.Collections.Generic;
+
+public class ManagerUI : MonoBehaviour
+{
+    public static ManagerUI Instance { get; private set; }
+
+    [SerializeField] GameObject optionsMenu;
+    [SerializeField] Animator optionsTabGarageAnim;
+    private bool open = false;
+    [SerializeField] GameObject currentAmbulance;
+    [SerializeField] Vector3 ambulancePosition;
+
+    private void Awake()
+    {
+        if (Instance == null)
+        {
+            Instance = this;
+        }
+        else
+        {
+            Destroy(gameObject);
+        }
+    }
+
+    public void EquippObjectOrSetValue(GameObject newModel, bool? ambulanceObject, List<float> value, bool? medicalValue)
+    {
+        if (newModel != null && ambulanceObject != null)
+        {
+            if ((bool)ambulanceObject)
+            {
+                Destroy(currentAmbulance);
+                Instantiate(newModel, ambulancePosition, newModel.transform.rotation);
+                Debug.Log("nuova ambulanza aggiunta");
+            }
+            else
+            {
+                Instantiate(newModel, currentAmbulance.transform);
+                Debug.Log("nuovo accessorio aggiunto");
+            }
+        }
+        else if (value != null && medicalValue != null)
+        {
+            if ((bool)medicalValue)
+            {
+                // codice di assegnazione valore medical
+                Debug.Log("medicalValue modifacato");
+            }
+            else
+            {
+                // codice di assegnazione valore engine
+                Debug.Log("engineValue modifacato");
+            }
+        }
+        else { Debug.Log("Nessun Oggetto Modificato"); }
+    }
+
+    public void ToGarageSceneButton()
+    {
+        StartCoroutine(Loader.LoadSceneAdditively(Loader.Scene.GarageScene));
+    }
+
+    public void ToGameSceneButton()
+    {
+        StartCoroutine(Loader.LoadSceneAdditively(Loader.Scene.GameScene));
+    }
+
+    public void ToIntroButton()
+    {
+        StartCoroutine(Loader.LoadSceneAdditively(Loader.Scene.IntroScene));
+    }
+
+    public void ToMainMenuButton()
+    {
+        StartCoroutine(Loader.LoadSceneAdditively(Loader.Scene.MainMenuScene));
+    }
+
+    public void OptionsButton()
+    {
+        optionsMenu.SetActive(!optionsMenu.activeSelf);
+    }
+
+    public void OptionsTabGarageButton()
+    {
+        open = !open;
+        optionsTabGarageAnim.SetTrigger(open ? "Open" : "Close");
+    }
+}
